@@ -105,6 +105,8 @@ test('PATCH /payments/:id marks Paid or Rejected only', async () => {
 test('POST /payments/:id/review approves a payment and rejects bad input', async () => {
   assert.equal((await send('POST', '/payments/1/review', { approved: 'true' })).status, 200);
   assert.deepEqual(queries[0].values, ['Paid', 1]);
+  assert.equal((await send('POST', '/payments/1/review', { approved: 'false' })).status, 200);
+  assert.deepEqual(queries[1].values, ['Rejected', 1]);
   assert.equal((await send('POST', '/payments/1/review', { approved: 'maybe' })).status, 400);
   assert.equal((await send('POST', '/payments/abc/review', { approved: 'true' })).status, 404);
   result = [];
