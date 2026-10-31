@@ -102,6 +102,14 @@ test('PATCH /payments/:id marks Paid or Rejected only', async () => {
   assert.equal((await send('PATCH', '/payments/2', { status: 'Paid' })).status, 404);
 });
 
+test('PATCH /payments/:id with Rejected stores and returns Rejected', async () => {
+  result = [{ ...row, status: 'Rejected' }];
+  const res = await send('PATCH', '/payments/1', { status: 'Rejected' });
+  assert.equal(res.status, 200);
+  assert.deepEqual(queries[0].values, ['Rejected', 1]);
+  assert.equal(((await res.json()) as { status: string }).status, 'Rejected');
+});
+
 test('POST /payments/:id/review approves a payment and rejects bad input', async () => {
   assert.equal((await send('POST', '/payments/1/review', { approved: 'true' })).status, 200);
   assert.deepEqual(queries[0].values, ['Paid', 1]);
