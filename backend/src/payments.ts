@@ -90,5 +90,28 @@ export function paymentsRouter(db: Db): Router {
     res.json(rows[0]);
   });
 
+  router.post('/:id/review', async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1 || id > MAX_ID) {
+      res.status(404).json({ error: 'Payment not found' });
+      return;
+    }
+    const { approved } = req.body ?? {};
+    if (approved !== 'true' && approved !== 'false') {
+      res.status(400).json({ error: "approved must be 'true' or 'false'" });
+      return;
+    }
+    const status = approved ? 'Paid' : 'Rejected';
+    const { rows } = await db.query(
+      `UPDATE payments SET status = $1 WHERE id = $2 RETURNING ${COLUMNS}`,
+      [status, id],
+    );
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Payment not found' });
+      return;
+    }
+    res.json(rows[0]);
+  });
+
   return router;
 }

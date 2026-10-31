@@ -52,3 +52,10 @@ export function updatePaymentStatus(id: number, status: 'Paid' | 'Rejected') {
     body: JSON.stringify({ status }),
   });
 }
+
+export function reviewPayment(id: number, approved: boolean) {
+  return request<Payment>(`/payments/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ approved: String(approved) }),
+  });
+}

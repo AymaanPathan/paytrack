@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   createPayment,
   listPayments,
+  reviewPayment,
   STATUSES,
-  updatePaymentStatus,
   type NewPayment,
   type Payment,
   type Status,
@@ -56,7 +56,7 @@ export default function App() {
     setUpdatingId(id);
     setUpdateError(null);
     try {
-      const updated = await updatePaymentStatus(id, status);
+      const updated = await reviewPayment(id, status === 'Paid');
       setPayments((current) => current?.map((p) => (p.id === id ? updated : p)) ?? null);
     } catch (err) {
       setUpdateError(messageOf(err, 'Could not update the payment.'));

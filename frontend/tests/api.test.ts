@@ -63,6 +63,13 @@ test('updatePaymentStatus sends the new status for that id', async () => {
   assert.deepEqual(queries[0].values, ['Paid', 1]);
 });
 
+test('reviewPayment sends the approval for that id', async () => {
+  rows = [{ ...asha, status: 'Paid' }];
+  const reviewed = await api.reviewPayment(1, true);
+  assert.equal(reviewed.status, 'Paid');
+  assert.deepEqual(queries[0].values, ['Paid', 1]);
+});
+
 test("the backend's validation message reaches the user", async () => {
   await assert.rejects(
     api.createPayment({ customerName: 'Asha', amount: 0, date: '2026-10-01' }),
