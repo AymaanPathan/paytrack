@@ -101,7 +101,7 @@ export function paymentsRouter(db: Db): Router {
       res.status(400).json({ error: "approved must be 'true' or 'false'" });
       return;
     }
-    const status = approved ? 'Paid' : 'Rejected';
+    const status = approved === 'true' ? 'Paid' : 'Rejected';
     const { rows } = await db.query(
       `UPDATE payments SET status = $1 WHERE id = $2 RETURNING ${COLUMNS}`,
       [status, id],
