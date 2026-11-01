@@ -10,9 +10,13 @@ const FRONTEND = 'http://frontend.test';
 let failing = false;
 let queries: string[] = [];
 const db = {
-  query: async (text: string) => {
+  query: async (text: string, values: unknown[] = []) => {
     queries.push(text);
     if (failing) throw new Error('secret connection detail');
+    // Postgres refuses anything too big for NUMERIC(12, 2), which would be a 500.
+    if (values.some((v) => typeof v === 'number' && v >= 10_000_000_000)) {
+      throw new Error('numeric field overflow');
+    }
     return { rows: [] };
   },
 } as unknown as Db;
@@ -96,6 +100,33 @@ test('POST /payments enforces the largest amount the column can hold', async () 
   assert.equal((await post(10_000_000_000)).status, 400);
   assert.equal(queries.length, 0);
   assert.equal((await post(9_999_999_999.99)).status, 201);
+});
+
+test('a very large amount is a 400 that never reaches the database, not a 500', async () => {
+  const log = mock.method(console, 'error', () => {});
+  try {
+    for (const amount of [10_000_000_000, 1e15, 1e21]) {
+      const res = await fetch(`${base}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName: 'Asha', amount, date: '2026-10-01' }),
+      });
+      assert.equal(res.status, 400, String(amount));
+      assert.match(((await res.json()) as { error: string }).error, /amount must be/);
+    }
+    assert.equal(queries.length, 0);
+  } finally {
+    log.mock.restore();
+  }
+});
+
+test('a normal amount is still accepted', async () => {
+  const res = await fetch(`${base}/payments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customerName: 'Asha', amount: 1500.75, date: '2026-10-01' }),
+  });
+  assert.equal(res.status, 201);
 });
 
 test('PATCH /payments/:id with no body is a 400', async () => {
