@@ -2,7 +2,6 @@ import { Router } from 'express';
 import type { Db } from './db';
 
 const STATUSES = ['Pending', 'Paid', 'Rejected'];
-const MAX_AMOUNT = 9_999_999_999.99; // Largest value NUMERIC(12, 2) can hold.
 const MAX_ID = 2_147_483_647; // Largest SERIAL value.
 
 // Casts keep amount a number and the date a plain YYYY-MM-DD string, so
@@ -20,7 +19,6 @@ function isValidAmount(value: unknown): value is number {
   return (
     typeof value === 'number' &&
     value > 0 &&
-    value <= MAX_AMOUNT &&
     Math.round(value * 100) / 100 === value
   );
 }
