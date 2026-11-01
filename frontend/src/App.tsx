@@ -124,12 +124,15 @@ export default function App() {
             </div>
           ) : payments === null ? (
             <p className="px-5 py-12 text-center text-ink-faint">Loading payments…</p>
-          ) : visible.length === 0 ? (
-            <p className="px-5 py-12 text-center text-ink-faint">
-              {filter === 'All' ? 'No payments yet.' : `No ${filter.toLowerCase()} payments.`}
-            </p>
           ) : (
-            <PaymentList payments={visible} updatingId={updatingId} onUpdate={handleUpdate} />
+            <PaymentList
+              payments={visible}
+              emptyMessage={
+                filter === 'All' ? 'No payments yet.' : `No ${filter.toLowerCase()} payments.`
+              }
+              updatingId={updatingId}
+              onUpdate={handleUpdate}
+            />
           )}
         </main>
       </div>
