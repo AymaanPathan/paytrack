@@ -10,8 +10,13 @@ let stored = { id: 1, customerName: 'Asha', amount: 100, date: '2026-10-01', sta
 const db = {
   query: async (text: string, values: unknown[] = []) => {
     if (text.startsWith('UPDATE')) {
+      const blocked = text.includes("status <> 'Paid'") && stored.status === 'Paid';
+      if (values[1] !== stored.id || blocked) return { rows: [] };
       stored = { ...stored, status: values[0] as string };
       return { rows: [stored] };
+    }
+    if (text.startsWith('SELECT id FROM')) {
+      return { rows: values[0] === stored.id ? [{ id: stored.id }] : [] };
     }
     const wanted = values[0];
     return { rows: wanted === undefined || wanted === stored.status ? [stored] : [] };
@@ -63,4 +68,38 @@ test('an approved payment is still Paid', async () => {
   await review('true');
   assert.equal((await list('?status=Paid')).length, 1);
   assert.deepEqual(await list('?status=Rejected'), []);
+});
+
+test('a Paid payment cannot become Rejected on either route', async () => {
+  await review('true');
+  const reviewed = await review('false');
+  assert.equal(reviewed.status, 409);
+  assert.deepEqual(await reviewed.json(), { error: 'A Paid payment cannot be changed to Rejected' });
+  const patched = await fetch(`${base}/payments/1`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'Rejected' }),
+  });
+  assert.equal(patched.status, 409);
+  assert.equal(stored.status, 'Paid');
+});
+
+test('rejecting a payment that does not exist is still a 404', async () => {
+  const res = await fetch(`${base}/payments/2/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ approved: 'false' }),
+  });
+  assert.equal(res.status, 404);
+});
+test('PATCH from Paid to Rejected is a 409 and the payment stays Paid', async () => {
+  stored = { ...stored, status: 'Paid' };
+  const res = await fetch(`${base}/payments/1`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'Rejected' }),
+  });
+  assert.equal(res.status, 409);
+  assert.equal(stored.status, 'Paid');
+  assert.equal((await list('?status=Paid')).length, 1);
 });

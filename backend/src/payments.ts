@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import type { Db } from './db';
 
 const STATUSES = ['Pending', 'Paid', 'Rejected'];
@@ -23,6 +23,26 @@ function isValidAmount(value: unknown): value is number {
     value <= MAX_AMOUNT &&
     Math.round(value * 100) / 100 === value
   );
+}
+
+// The Paid check sits in the UPDATE so two requests at once can't slip past it.
+async function updateStatus(db: Db, res: Response, id: number, status: 'Paid' | 'Rejected') {
+  const { rows } = await db.query(
+    `UPDATE payments SET status = $1 WHERE id = $2
+     ${status === 'Rejected' ? "AND status <> 'Paid'" : ''}
+     RETURNING ${COLUMNS}`,
+    [status, id],
+  );
+  if (rows.length > 0) {
+    res.json(rows[0]);
+    return;
+  }
+  const existing = await db.query('SELECT id FROM payments WHERE id = $1', [id]);
+  if (existing.rows.length > 0) {
+    res.status(409).json({ error: 'A Paid payment cannot be changed to Rejected' });
+    return;
+  }
+  res.status(404).json({ error: 'Payment not found' });
 }
 
 export function paymentsRouter(db: Db): Router {
@@ -79,15 +99,7 @@ export function paymentsRouter(db: Db): Router {
       res.status(400).json({ error: 'status must be Paid or Rejected' });
       return;
     }
-    const { rows } = await db.query(
-      `UPDATE payments SET status = $1 WHERE id = $2 RETURNING ${COLUMNS}`,
-      [status, id],
-    );
-    if (rows.length === 0) {
-      res.status(404).json({ error: 'Payment not found' });
-      return;
-    }
-    res.json(rows[0]);
+    await updateStatus(db, res, id, status);
   });
 
   router.post('/:id/review', async (req, res) => {
@@ -102,15 +114,7 @@ export function paymentsRouter(db: Db): Router {
       return;
     }
     const status = approved === 'true' ? 'Paid' : 'Rejected';
-    const { rows } = await db.query(
-      `UPDATE payments SET status = $1 WHERE id = $2 RETURNING ${COLUMNS}`,
-      [status, id],
-    );
-    if (rows.length === 0) {
-      res.status(404).json({ error: 'Payment not found' });
-      return;
-    }
-    res.json(rows[0]);
+    await updateStatus(db, res, id, status);
   });
 
   return router;
