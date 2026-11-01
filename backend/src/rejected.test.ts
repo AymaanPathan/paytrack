@@ -92,3 +92,14 @@ test('rejecting a payment that does not exist is still a 404', async () => {
   });
   assert.equal(res.status, 404);
 });
+test('PATCH from Paid to Rejected is a 409 and the payment stays Paid', async () => {
+  stored = { ...stored, status: 'Paid' };
+  const res = await fetch(`${base}/payments/1`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'Rejected' }),
+  });
+  assert.equal(res.status, 409);
+  assert.equal(stored.status, 'Paid');
+  assert.equal((await list('?status=Paid')).length, 1);
+});
