@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Db } from './db';
 
 const STATUSES = ['Pending', 'Paid', 'Rejected'];
+const MAX_AMOUNT = 9_999_999_999.99; // Largest value NUMERIC(12, 2) can hold.
 const MAX_ID = 2_147_483_647; // Largest SERIAL value.
 
 // Casts keep amount a number and the date a plain YYYY-MM-DD string, so
@@ -19,6 +20,7 @@ function isValidAmount(value: unknown): value is number {
   return (
     typeof value === 'number' &&
     value > 0 &&
+    value <= MAX_AMOUNT &&
     Math.round(value * 100) / 100 === value
   );
 }
@@ -50,7 +52,7 @@ export function paymentsRouter(db: Db): Router {
     }
     if (!isValidAmount(amount)) {
       res.status(400).json({
-        error: 'amount must be a positive number with at most 2 decimals',
+        error: `amount must be a positive number up to ${MAX_AMOUNT} with at most 2 decimals`,
       });
       return;
     }
